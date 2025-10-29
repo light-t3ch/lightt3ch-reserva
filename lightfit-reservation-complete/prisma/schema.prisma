@@ -1,0 +1,137 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== Users =====
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  password     String?
+  name         String?
+  role         String       @default("MEMBER")
+
+  memberships  Membership[]
+  bookings     Booking[]
+  auditLogs    AuditLog[]
+  trainer      Trainer?
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+// ===== Memberships =====
+model Membership {
+  id                    String   @id @default(cuid())
+
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id])
+
+  planCode              String
+  priceId               String?
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
+
+  status                String   @default("ACTIVE")
+
+  sessionLengthMinutes  Int
+  monthlySessions       Int
+  remainingSessions     Int
+
+  cycleAnchor           DateTime
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+
+  bookings              Booking[]
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
+  @@index([stripeSubscriptionId])
+}
+
+// ===== Trainers =====
+model Trainer {
+  id         String    @id @default(cuid())
+
+  userId     String    @unique
+  user       User      @relation(fields: [userId], references: [id])
+
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id])
+
+  bio        String?
+  avatarUrl  String?
+
+  bookings   Booking[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([locationId])
+}
+
+// ===== Locations =====
+model Location {
+  id        String    @id @default(cuid())
+  name      String
+  address   String?
+  openNote  String?
+
+  trainers  Trainer[]
+  bookings  Booking[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// ===== Bookings =====
+model Booking {
+  id           String      @id @default(cuid())
+
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+
+  membershipId String?
+  membership   Membership? @relation(fields: [membershipId], references: [id])
+
+  trainerId    String?
+  trainer      Trainer?    @relation(fields: [trainerId], references: [id])
+
+  locationId   String?
+  location     Location?   @relation(fields: [locationId], references: [id])
+
+  startAt      DateTime
+  endAt        DateTime
+
+  status       String      @default("CONFIRMED")
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([trainerId])
+  @@index([locationId])
+  @@index([membershipId])
+}
+
+// ===== Audit Logs =====
+model AuditLog {
+  id        String   @id @default(cuid())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  action    String
+  meta      String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
